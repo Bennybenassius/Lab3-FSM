@@ -1,6 +1,6 @@
 #include "verilated.h"
 #include "verilated_vcd_c.h"
-#include "Vdelay.h"
+#include "Vf1_fsm_comb.h"
 
 #include "vbuddy.cpp"     // include vbuddy code
 #define MAX_SIM_CYC 100000
@@ -12,23 +12,22 @@ int main(int argc, char **argv, char **env) {
 
   Verilated::commandArgs(argc, argv);
   // init top verilog instance
-  Vdelay * top = new Vdelay;
+  Vf1_fsm_comb * top = new Vf1_fsm_comb;
   // init trace dump
   Verilated::traceEverOn(true);
   VerilatedVcdC* tfp = new VerilatedVcdC;
   top->trace (tfp, 99);
-  tfp->open ("delay.vcd");
+  tfp->open ("Vf1_fsm_comb.vcd");
  
   // init Vbuddy
   if (vbdOpen()!=1) return(-1);
-  vbdHeader("L3T2:Delay");
-  vbdSetMode(1);        // Flag mode set to one-shot
+  vbdHeader("L3T2 Challenge:F1 clktick");
 
   // initialize simulation inputs
   top->clk = 1;
   top->rst = 0;
-  top->trigger = 0;
-  top->n = vbdValue();
+  top->en = 1;
+  top->N = vbdValue();
   
   // run simulation for MAX_SIM_CYC clock cycles
   for (simcyc=0; simcyc<MAX_SIM_CYC; simcyc++) {
@@ -39,15 +38,13 @@ int main(int argc, char **argv, char **env) {
       top->eval ();
     }
 
-    // Display toggle neopixel
-    if (top->time_out) {
-      vbdBar(lights);
-      lights = lights ^ 0xFF;
-    }
+    // Display f1-fsm on neopixel
+    vbdBar(top->out);
+
     // set up input signals of testbench
     top->rst = (simcyc < 2);    // assert reset for 1st cycle
-    top->trigger = vbdFlag();
-    top->n = vbdValue();
+    top->en = (simcyc > 2);
+    top->N = vbdValue();
     vbdCycle(simcyc);
 
     if (Verilated::gotFinish())  exit(0);
